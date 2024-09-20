@@ -1,0 +1,162 @@
+:To clean the IMDB_data to make it suitable  for analysis.
+/* during the table creation process, I modified the data type of release_year, duration,
+income, votes columns  to string  because they contained non-numeric values. as my 
+plan is to subsequently convert these columns to their appropriate data types later on. */
+-- creating imdb_data table
+CREATE TABLE imdb_data(
+    title_id       VARCHAR(10) PRIMARY KEY,
+    original_title VARCHAR(200),
+    release_year   VARCHAR,
+    genre          VARCHAR(100),
+    duration       VARCHAR,
+    country        VARCHAR(100),
+    content_rating VARCHAR(10),
+    director       VARCHAR(200),
+    income         VARCHAR ,
+    votes          VARCHAR,
+    score          NUMERIC(3, 1)
+);
+-- to have a look at the messy dataset
+SELECT *
+FROM imdb_data;
+-- checking for duplicate data
+SELECT title_id, COUNT(*) duplicate
+FROM imdb_data
+GROUP BY title_id
+HAVING COUNT(*) > 1;-- no duplicate found
+
+/* For release_year column: 
+- Handle incorrect date
+-  Convert from string to to a consistent date format */
+--  To show the release year column
+SELECT release_year
+FROM imdb_data;
+-- To correct the inconsistencies in the release_year column
+UPDATE imdb_data
+SET release_year = CASE
+						WHEN release_year = '22 Feb 04' THEN '2004-02-22'  
+                        WHEN release_year = '10-29-99' 	THEN '1999-10-29'
+                        WHEN release_year = '09 21 1972' THEN '1972-09-21'
+						ELSE release_year
+						END;
+
+-- To convert the release_year column from string to date format and store the data in a new column
+ALTER TABLE imdb_data
+ADD COLUMN converted_release_date DATE;
+
+UPDATE imdb_data
+SET converted_release_date = CAST(release_year AS DATE);
+
+SELECT converted_release_date 
+FROM imdb_data;
+
+/* For duration column:
+-  Handle missing and invalid duration
+-  Convert to integer */
+-- To check the duration column
+SELECT DISTINCT duration
+FROM imdb_data
+ORDER BY 1 DESC;
+-- To fill the null value in duration column
+UPDATE imdb_data
+SET duration = COALESCE(duration, '0')
+WHERE duration IS NULL;-- filling null with zero
+-- To fix incorrect data in the duration column
+UPDATE imdb_data
+SET duration = CASE WHEN duration IN ('Nan', 'Inf','Not Applicable','-', 'NULL') THEN '0'
+					WHEN duration = '178c' THEN '178'
+					ELSE duration
+					END;
+-- To confirm chabes
+SELECT duration
+FROM imdb_data
+WHERE duration = '0';
+-- To convert the duration column int format and store the data in a new column
+ALTER TABLE imdb_data
+ADD COLUMN converted_duration INT;
+
+UPDATE imdb_data
+SET converted_duration = CAST(duration AS INT);
+-- to confirm changes
+SELECT converted_duration
+FROM imdb_data;
+
+/* For country column:
+- Standalize country names */
+-- to check distinct country name column
+SELECT DISTINCT country
+FROM imdb_data
+ORDER BY 1 DESC;
+-- to correct misspelled country names
+UPDATE imdb_data
+SET country =
+    CASE 
+        WHEN country IN ('New Zesland','New Zeland') THEN 'New Zealand'
+        WHEN country IN ('US.', 'US') THEN 'USA'
+        WHEN country = 'Italy1' THEN 'Italy'
+        ELSE country
+    END;
+-- to confirm changes	
+SELECT DISTINCT country 
+FROM imdb_data;
+
+/*For content rating:
+- Handle incorrect values */
+-- To check content rating column
+SELECT DISTINCT content_rating
+FROM imdb_data
+-- To correct the inconsistencies in the content rating column
+UPDATE imdb_data
+SET content_rating = CASE
+                           WHEN content_rating IN ('Not Rated', '#N/A') THEN 'Unrated'
+						   when content_rating = 'Approved' THEN 'G'
+						   ELSE content_rating
+						   END;
+-- To confirm changes
+SELECT DISTINCT content_rating
+FROM imdb_data;
+
+/* For income column:
+- Remove dollar sign and commas
+- Convert to integer */
+-- To check income column
+SELECT income
+FROM imdb_Data;
+-- To remove all non-numeric values
+UPDATE imdb_data
+SET income = REGEXP_REPLACE(income, '[^0-9]', '', 'g');
+-- To convert the income column to integerand store the data in a new column
+ALTER TABLE imdb_data
+ADD COLUMN converted_income BIGINT;
+-- To update the converted_income column
+UPDATE imdb_data
+SET converted_income = CAST(income AS BIGINT);
+-- to confirm changes
+SELECT converted_income
+FROM imdb_data;
+
+/* For votes column:
+- Remove dots
+- convert tointeger format */
+-- to check the vote column
+SELECT votes 
+FROM imdb_data
+--  To remove all non-numeric values
+UPDATE imdb_data
+SET votes = REGEXP_REPLACE(votes, '[^0-9]', '', 'g');
+-- To  create a int column converted
+ALTER TABLE imdb_data
+ADD COLUMN converted_votes INT;
+
+UPDATE imdb_data
+SET converted_vote = CAST(votes AS INT)
+-- To confirm change 
+SELECT converted_votes
+FROM imdb_data;
+
+--drop / delete unused column
+ALTER TABLE imdb_data
+DROP COLUMN release_year,
+DROP COLUMN duration,
+DROP COLUMN income,
+DROP COLUMN votes;
