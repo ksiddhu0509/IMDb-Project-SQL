@@ -160,3 +160,4 @@ DROP COLUMN release_year,
 DROP COLUMN duration,
 DROP COLUMN income,
 DROP COLUMN votes;
+
